@@ -18,7 +18,7 @@ class Game {
       angle: 0,
 
       // number of lanes (may change for further granularity)
-      width: 3
+      width: 1.5
     });
 
     // var second = this.c.entities.create(TrackPiece, {

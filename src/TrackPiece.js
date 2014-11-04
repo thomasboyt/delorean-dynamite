@@ -1,25 +1,4 @@
-var LANE_WIDTH = 10;
-
-
-function getRGBAFor(imageData, offset) {
-  offset = offset * 4;
-  return [
-    imageData.data[offset],
-    imageData.data[offset+1],
-    imageData.data[offset+2],
-    imageData.data[offset+3]
-  ];
-}
-
-function setRGBAIn(imageData, offset, rgba) {
-  offset = offset * 4;
-
-  imageData.data[offset] = rgba[0];
-  imageData.data[offset+1] = rgba[1];
-  imageData.data[offset+2] = rgba[2];
-  imageData.data[offset+3] = rgba[3];
-}
-
+var LANE_WIDTH = 50;
 
 // current assumptions:
 // - only one piece
@@ -50,15 +29,25 @@ class TrackPiece {
 
     ctx.strokeStyle = 'white';
 
+    ctx.lineWidth = 10;
     ctx.beginPath();
     ctx.moveTo(250 - width/2, 500);
-    ctx.lineTo(250 - width/2, 250);
+    ctx.lineTo(250 - width/2, 0);
     ctx.stroke();
 
     ctx.beginPath();
     ctx.moveTo(250 + width/2, 500);
-    ctx.lineTo(250 + width/2, 250);
+    ctx.lineTo(250 + width/2, 0);
     ctx.stroke();
+
+    ctx.fillStyle = 'red';
+    ctx.fillRect(100, 100, 100, 100);
+
+    ctx.fillStyle = 'blue';
+    ctx.fillRect(300, 300, 100, 100);
+
+    ctx.fillStyle = 'blue';
+    ctx.fillRect(300, 300, 100, 100);
   }
 
   _drawInternal() {
@@ -70,52 +59,54 @@ class TrackPiece {
   }
 
   draw(ctx) {
-    // so, imagine we've got a straight line:
-    // |  |
-    // |  |
-    // |  |
-    // this isn't actually represented as X and Y coordinates, but as X and *Z* coordinates (with Y always = 0)
-    // the top of the line is the highest Z (most depth)
-    //
-    // x' = x / z
-    // y' = y / z  // this is always 0, I guess?
-
     var internal = this._drawInternal();
-    var originalData = internal.getImageData(0, 0, this.trackCanvas.width, this.trackCanvas.height);
-    // return ctx.getImageData(0, 0, this.trackCanvas.width, this.trackCanvas.height);
 
-    var x, y, originalOffset, newOffset, pixel, px, py, pz, sx, sy;
+    var img = this.trackCanvas;
+    var scalingFactor = 15;
+    var pixelWidth = 200;
+    var x = 0;
+    var y = 300;
 
-    var horizon = 220;
-    var fov = 200;
-    var imageData = ctx.createImageData(this.game.width, this.game.height);
+    var h = img.height,
+        w = img.width,
 
-    for (y = 0; y < this.game.height; y++) {
-      for (x = 0; x < this.game.width; x++) {
-        // do projection and putImageData
-        // px = x;
-        // py = y + horizon - fov;
-        // pz = y + horizon;
+        // The number of slices to draw.
+        numSlices = Math.abs(pixelWidth),
 
-        // sx = px / pz;
-        // sy = py / pz;
+        // The width of each source slice.
+        sliceHeight = w / numSlices,
 
+        // Whether to draw the slices in reverse order or not.
+        polarity = (pixelWidth > 0) ? 1 : -1,
 
+        // How much should we scale the width of the slice 
+        // before drawing?
+        heightScale = Math.abs(pixelWidth) / h,
 
-        originalOffset = (Math.round(sy) * this.trackCanvas.width + Math.round(sx));
-        newOffset = (Math.round(y) * this.game.width + Math.round(x));
+        // How much should we scale the height of the slice 
+        // before drawing? 
+        widthScale = (1 - scalingFactor) / numSlices;
 
-        if (originalOffset > 0) {
-          pixel = getRGBAFor(originalData, originalOffset);
-          setRGBAIn(imageData, newOffset, pixel);
-          debugger;
-        }
-        // original = drawn.getImageData(sx, sy, 1, 1);
-        // ctx.putImageData(original, x, y);
-      }
+    for(var n = 0; n < numSlices; n++) {
+
+      // Source: where to take the slice from.
+      var sx = 0,
+          sy = sliceHeight * n,
+          sWidth = w,
+          sHeight = sliceHeight;
+
+      // Destination: where to draw the slice to 
+      // (the transformation happens here).
+      // var dx = x + (sliceWidth * n * widthScale * polarity),
+      var dx = x + ((w * widthScale * n) / 2),
+          dy = y + (sliceHeight * n * heightScale * polarity),
+          dWidth = w * (1 - (widthScale * n)),
+          dHeight = sliceHeight * heightScale;
+
+      ctx.drawImage(img, sx, sy, sWidth, sHeight,
+                    dx, dy, dWidth, dHeight);
     }
 
-    ctx.putImageData(imageData, 0, 0);
   }
 }
 
